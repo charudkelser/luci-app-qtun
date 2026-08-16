@@ -32,129 +32,129 @@ Dirancang untuk OpenWrt dengan auto-download core saat build dan integrasi penuh
 
 ## 📦 Instalasi Package (.ipk / .apk)
 
-### Metode SCP
+### 1-Liner Auto Install via Wget (Rekomendasi)
+
+#### 📌 Khusus OpenWrt 21.02 (Firmware STB / Custom Mod)
+> Memperbaiki kendala architecture mismatch dan validasi dependensi kernel/libc bawaan OpenWrt 21:
+
+```bash
+grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf && opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk) && opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+
+#### 📌 Untuk OpenWrt 22.03, 23.05, 24.10 & Official Builds
+
+```bash
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+
+## Metode Upload SCP (Manual)
+Upload File ke /tmp
 
 ```bash
 scp luci-app-qtun.ipk root@192.168.1.1:/tmp/
 ```
+
 ```bash
 scp luci-app-qtun.apk root@192.168.1.1:/tmp/
 ```
 
-### Install
+Eksekusi Instalasi Manual
 
 ```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-```bash
-apk update
-apk add --allow-untrusted /tmp/luci-app-qtun.apk
-```
+OPKG (OpenWrt 21)
 
-### Restart LuCI
+```grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf
+```
 
 ```bash
-/etc/init.d/uhttpd restart
+opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk
+/etc/init.d/qtun_autoboot enable
+/etc/init.d/qtun_autoboot start
+/etc/init.d/rpcd restart
 ```
 
-### Atau reboot
+### OPKG (OpenWrt 22 / 23 / 24)
 
 ```bash
-reboot
+opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk
+/etc/init.d/qtun_autoboot enable
+/etc/init.d/qtun_autoboot start
+/etc/init.d/rpcd restart
 ```
 
----
+### Restart Web UI Service (Jika Dibutuhkan)
 
-## 📦 Install Dependency Manual (jika diperlukan)
+```bash
+/etc/init.d/uhttpd restart 2>/dev/null || /etc/init.d/rpcd restart
+```
+
+### 📦 Install Dependency Manual (jika diperlukan)
 
 ```bash
 opkg update
 opkg install luci-compat bash curl ca-bundle ca-certificates jq
 ```
+
 ```bash
 apk update
 apk add luci-compat bash curl ca-bundle ca-certificates jq
 ```
 
----
-
-## 🚀 Fitur Utama
-
-### Auto Download Core
-- Mihomo Core
-- Q-Load Core
-- ZiVPN Core
-
-### LuCI Features
-- LuCI Web UI
-- Multi tunnel support
-- Config management
-- Auto boot
-- Script action modular
-
----
-
-## 🛠 Arsitektur Support
-
-- AMD64 / x86_64
-- ARM64 / aarch64
-- ARM / armv7
-
----
-
-## 🧠 Troubleshooting
-
-### Cek log
+🚀 Fitur Utama
+​Auto Download Core
+​Mihomo Core
+​Q-Load Core
+​ZiVPN Core
+​LuCI Features
+​LuCI Web UI
+​Multi tunnel support
+​Config management
+​Auto boot
+​Script action modular
+​🛠 Arsitektur Support
+​AMD64 / x86_64
+​ARM64 / aarch64 (aarch64_cortex-a53 / aarch64_cortex-a55)
+​ARM / armv7 (arm_cortex-a7_neon-vfpv4 / arm_cortex-a9)
+​🧠 Troubleshooting
+​Cek log
 
 ```bash
 logread -f
 ```
-
-### Cek service
-
+Cek service
 ```bash
 /etc/qtun/action/qtun.sh status
 ```
 
-### Restart service
+Restart service
 
 ```bash
 /etc/qtun/action/qtun.sh restart
 ```
 
----
-
-## ❌ Uninstall
+❌ Uninstall
 
 ```bash
+
 opkg remove luci-app-qtun
-rm -rf /etc/qtun
+rm -rf /etc/qtun /etc/config/qtun /etc/init.d/qtun_autoboot
+rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/
+/etc/init.d/rpcd restart
 ```
 
----
 
-## 🔖 Release
+🔖 Release
+​Build release tersedia di tab Releases:
+​https://github.com/QcomWrt/luci-app-qtun/releases
+​📜 License
+​MIT License
+​Core / Binaries
+​Zivpn Zivpn by zahidbd2
+​Q-load Q-load by QcomWrt
+​Clash Mihomo by MetaCubeX
+​👤 Maintainer
+​Azy / QcomWrt
 
-Build release tersedia di tab **Releases**:
 
-https://github.com/QcomWrt/luci-app-qtun/releases
 
----
 
-## 📜 License
-
-* [MIT License](https://github.com/QcomWrt/luci-app-qtun/blob/master/LICENSE)
-
-## Core / Binaries
-
-* Zivpn [Zivpn](https://github.com/zahidbd2/udp-zivpn) by [zahidbd2](https://github.com/zahidbd2)
-
-* Q-load [Q-load](https://github.com/QcomWrt/Q-load) by [QcomWrt](https://github.com/QcomWrt)
-
-* Clash [Mihomo](https://github.com/MetaCubeX/mihomo) by [MetaCubeX](https://github.com/MetaCubeX)
-
----
-
-## 👤 Maintainer
-
-**Azy / QcomWrt**
