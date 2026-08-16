@@ -32,19 +32,49 @@ Dirancang untuk OpenWrt dengan auto-download core saat build dan integrasi penuh
 
 ## 📦 Instalasi Package (.ipk / .apk)
 
-### 1-Liner Auto Install via Wget (Rekomendasi)
+### ⚡ 1-Liner Auto Install via Wget (Rekomendasi)
 
-#### 📌 Khusus OpenWrt 21.02 (Firmware STB / Custom Mod)
-> Memperbaiki kendala architecture mismatch dan validasi dependensi kernel/libc bawaan OpenWrt 21:
+Silakan pilih satu perintah di bawah ini yang sesuai dengan arsitektur dan versi OpenWrt perangkat kamu:
+
+#### 📌 Universal / All Architecture (Rekomendasi OpenWrt 22.03+)
+```bash
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+📌 Khusus OpenWrt 21.02 (Firmware STB / Custom Mod)
+​Memperbaiki kendala architecture mismatch dan validasi dependensi kernel/libc bawaan OpenWrt 21:
 
 ```bash
 grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf && opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk) && opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
 ```
 
-#### 📌 Untuk OpenWrt 22.03, 23.05, 24.10 & Official Builds
+📌 ARM64 - Cortex A55 (aarch64_cortex-a55)
 
 ```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk && rm -f /tmp/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+
+📌 ARM64 Generic (aarch64_generic)
+
+```bash
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_aarch64_generic.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_aarch64_generic.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_aarch64_generic.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_aarch64_generic.ipk && rm -f /tmp/luci-app-qtun_1.0.6_aarch64_generic.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+
+📌 ARMv7 Neon (arm_cortex-a7_neon-vfpv4)
+
+```bash
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk && rm -f /tmp/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+
+📌 ARMv7 (arm_cortex-a9)
+
+```bash
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_arm_cortex-a9.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_arm_cortex-a9.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_arm_cortex-a9.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_arm_cortex-a9.ipk && rm -f /tmp/luci-app-qtun_1.0.6_arm_cortex-a9.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+```
+
+📌 x86_64 / PC AMD64 (x86_64)
+
+```bash
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_x86_64.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_x86_64.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_x86_64.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_x86_64.ipk && rm -f /tmp/luci-app-qtun_1.0.6_x86_64.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
 ```
 
 ## Metode Upload SCP (Manual)
