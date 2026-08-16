@@ -146,8 +146,9 @@ AMD64 / x86_64
 ARM64 / aarch64 (aarch64_cortex-a53 / aarch64_cortex-a55)  
 ARM / armv7 (arm_cortex-a7_neon-vfpv4 / arm_cortex-a9)  
   
-**🧠 Troubleshooting**
-​Cek log  
+**🧠 Troubleshooting**  
+  
+Cekk log  
 
 ```bash
 logread -f
