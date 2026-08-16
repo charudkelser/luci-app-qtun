@@ -190,7 +190,3 @@ Q-load by QcomWrt
 Clashh Mihomo by MetaCubeX  
 ​👤 Maintainer
 ​Azy / QcomWrt
-
-
-
-
