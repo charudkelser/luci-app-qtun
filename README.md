@@ -173,15 +173,16 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/
 ```
 
 
-🔖 Release
+🔖 Release  
+
 ​Build release tersedia di tab Releases:
-​https://github.com/QcomWrt/luci-app-qtun/releases
-​📜 License
-​MIT License
-​Core / Binaries
-​Zivpn Zivpn by zahidbd2
-​Q-load Q-load by QcomWrt
-​Clash Mihomo by MetaCubeX
+​https://github.com/QcomWrt/luci-app-qtun/releases  
+​📜 License  
+MIT License  
+Core / Binaries  
+Zivpnn Zivpn by zahidbd2  
+Q-loadQ-load by QcomWrt  
+Clashh Mihomo by MetaCubeX  
 ​👤 Maintainer
 ​Azy / QcomWrt
 
