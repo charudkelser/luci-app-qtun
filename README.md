@@ -130,27 +130,29 @@ apk update
 apk add luci-compat bash curl ca-bundle ca-certificates jq
 ```
 
-🚀 Fitur Utama
-​Auto Download Core
-​Mihomo Core
-​Q-Load Core
-​ZiVPN Core
-​LuCI Features
-​LuCI Web UI
-​Multi tunnel support
-​Config management
-​Auto boot
-​Script action modular
-​🛠 Arsitektur Support
-​AMD64 / x86_64
-​ARM64 / aarch64 (aarch64_cortex-a53 / aarch64_cortex-a55)
-​ARM / armv7 (arm_cortex-a7_neon-vfpv4 / arm_cortex-a9)
-​🧠 Troubleshooting
-​Cek log
+**🚀 Fitur Utama**  
+Autoo Download Core  
+Mihomoo Core  
+Q-Loadd Core  
+ZiVPNN Core  
+LuCII Features  
+LuCII Web UI  
+Multi tunnel support  
+Configg management  
+Autoo boot  
+Script action modular  
+​🛠 Arsitektur Support  
+AMD64 / x86_64  
+ARM64 / aarch64 (aarch64_cortex-a53 / aarch64_cortex-a55)  
+ARM / armv7 (arm_cortex-a7_neon-vfpv4 / arm_cortex-a9)  
+  
+**🧠 Troubleshooting**
+​Cek log  
 
 ```bash
 logread -f
 ```
+
 Cek service
 ```bash
 /etc/qtun/action/qtun.sh status
