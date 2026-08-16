@@ -1,139 +1,137 @@
 #!/bin/sh
 
 # =========================================================
-# QTUN AUTO INSTALLER v2
+# QTUN SMART INSTALLER
+# Version : 2.0.0
+# Project : luci-app-qtun
 # =========================================================
 
 VERSION="1.0.6"
+INSTALLER_VERSION="2.0.0"
+
 REPO="charudkelser/luci-app-qtun"
 BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
 
-TMP_DIR="/tmp"
+TMP_DIR="/tmp/qtun-installer"
 PACKAGE_FILE="$TMP_DIR/luci-app-qtun_${VERSION}.ipk"
-LOG_FILE="$TMP_DIR/qtun-installer.log"
-
-# =========================================================
-# COLORS
-# =========================================================
+LOG_FILE="/tmp/qtun-installer.log"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
-BOLD='\033[1m'
+MAGENTA='\033[0;35m'
 NC='\033[0m'
+BOLD='\033[1m'
 
 CHECK="✓"
 CROSS="✗"
 ARROW="➜"
-WARN="!"
-SPINNER_CHARS="|/-\\"
-
-# =========================================================
-# GLOBAL
-# =========================================================
 
 DISTRIB_RELEASE=""
+DISTRIB_DESCRIPTION=""
 DISTRIB_REVISION=""
-DISTRIB_TARGET=""
-MACHINE=""
+
 BEST_ARCH=""
 BEST_PRIORITY=""
+
 SELECTED_PACKAGE=""
 SELECTED_URL=""
-QTUN_INSTALLED=""
-QTUN_VERSION=""
+
+OPENWRT_MAJOR=""
 COMPAT_MODE="normal"
+
+INSTALL_FAILED=0
+
 
 # =========================================================
 # BASIC FUNCTIONS
 # =========================================================
 
-pause() {
+mkdir -p "$TMP_DIR"
+: > "$LOG_FILE"
+
+
+pause_screen() {
     echo
-    printf "Tekan ENTER untuk melanjutkan..."
-    read -r _
+    printf "Press Enter to continue..."
+    read dummy
 }
+
+
+print_ok() {
+    printf "  ${GREEN}${CHECK}${NC} %s\n" "$1"
+}
+
+
+print_error() {
+    printf "  ${RED}${CROSS}${NC} %s\n" "$1"
+}
+
+
+print_warn() {
+    printf "  ${YELLOW}!${NC} %s\n" "$1"
+}
+
+
+print_info() {
+    printf "  ${CYAN}${ARROW}${NC} %s\n" "$1"
+}
+
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)] $*" >> "$LOG_FILE"
+}
+
 
 header() {
     clear
     echo
-    echo -e "${CYAN}${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}${BOLD}║${NC}                                                    ${CYAN}${BOLD}║${NC}"
-    echo -e "${CYAN}${BOLD}║${NC}              ${WHITE}Q T U N  I N S T A L L E R${NC}         ${CYAN}${BOLD}║${NC}"
-    echo -e "${CYAN}${BOLD}║${NC}                    ${YELLOW}v${VERSION}${NC}                     ${CYAN}${BOLD}║${NC}"
-    echo -e "${CYAN}${BOLD}║${NC}                                                    ${CYAN}${BOLD}║${NC}"
-    echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════════════════╝${NC}"
+    echo "${CYAN}${BOLD}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo "${CYAN}${BOLD}║                 QTUN SMART INSTALLER                    ║${NC}"
+    echo "${CYAN}${BOLD}║                      v${INSTALLER_VERSION}                         ║${NC}"
+    echo "${CYAN}${BOLD}╚══════════════════════════════════════════════════════════╝${NC}"
     echo
 }
 
-line() {
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
 
-ok() {
-    echo -e "  ${GREEN}${CHECK}${NC} $1"
-}
+progress_bar() {
+    CURRENT="$1"
+    TOTAL="$2"
+    TEXT="$3"
 
-warn() {
-    echo -e "  ${YELLOW}${WARN}${NC} $1"
-}
+    WIDTH=30
 
-error() {
-    echo -e "  ${RED}${CROSS}${NC} $1"
-}
+    if [ "$TOTAL" -le 0 ]; then
+        TOTAL=1
+    fi
 
-info() {
-    echo -e "  ${BLUE}${ARROW}${NC} $1"
-}
+    FILLED=$((CURRENT * WIDTH / TOTAL))
+    EMPTY=$((WIDTH - FILLED))
 
-spinner() {
-    text="$1"
-    pid="$2"
+    BAR=""
+
     i=0
-
-    while kill -0 "$pid" 2>/dev/null; do
+    while [ "$i" -lt "$FILLED" ]; do
+        BAR="${BAR}█"
         i=$((i + 1))
-        char=$(printf "%s" "$SPINNER_CHARS" | cut -c $(( (i % 4) + 1 )))
-        printf "\r  ${CYAN}%s${NC} %s..." "$char" "$text"
-        sleep 0.15
     done
 
-    printf "\r\033[K"
+    i=0
+    while [ "$i" -lt "$EMPTY" ]; do
+        BAR="${BAR}░"
+        i=$((i + 1))
+    done
+
+    PERCENT=$((CURRENT * 100 / TOTAL))
+
+    printf "\r  ${CYAN}[${BAR}]${NC} %3s%% %s" "$PERCENT" "$TEXT"
+
+    [ "$CURRENT" -ge "$TOTAL" ] && echo
 }
 
-run_with_spinner() {
-    text="$1"
-    shift
-
-    "$@" >>"$LOG_FILE" 2>&1 &
-    pid=$!
-
-    spinner "$text" "$pid"
-
-    wait "$pid"
-    return $?
-}
-
-step_start() {
-    STEP="$1"
-    TOTAL="$2"
-    TITLE="$3"
-
-    echo
-    echo -e "${MAGENTA}${BOLD}[$STEP/$TOTAL]${NC} ${WHITE}${BOLD}$TITLE${NC}"
-}
-
-step_done() {
-    echo -e "      ${GREEN}${CHECK} Selesai${NC}"
-}
-
-step_failed() {
-    echo -e "      ${RED}${CROSS} Gagal${NC}"
-}
 
 # =========================================================
 # SYSTEM DETECTION
@@ -141,42 +139,54 @@ step_failed() {
 
 detect_system() {
 
-    [ -f /etc/openwrt_release ] || return 1
+    if [ ! -f /etc/openwrt_release ]; then
+        print_error "OpenWrt tidak terdeteksi."
+        return 1
+    fi
 
     . /etc/openwrt_release
 
-    MACHINE="$(uname -m 2>/dev/null)"
-    DISTRIB_RELEASE="${DISTRIB_RELEASE:-unknown}"
-    DISTRIB_REVISION="${DISTRIB_REVISION:-unknown}"
-    DISTRIB_TARGET="${DISTRIB_TARGET:-unknown}"
+    log "OpenWrt: $DISTRIB_RELEASE"
+    log "Revision: $DISTRIB_REVISION"
+    log "Machine: $(uname -m 2>/dev/null)"
 
     case "$DISTRIB_RELEASE" in
-        21.02*)
+        21.*)
+            OPENWRT_MAJOR="21"
             COMPAT_MODE="legacy"
             ;;
-        22.03*)
+        22.*)
+            OPENWRT_MAJOR="22"
             COMPAT_MODE="legacy"
             ;;
-        23.05*)
+        23.*)
+            OPENWRT_MAJOR="23"
             COMPAT_MODE="normal"
             ;;
-        24.10*)
-            COMPAT_MODE="normal"
-            ;;
-        SNAPSHOT*)
+        24.*)
+            OPENWRT_MAJOR="24"
             COMPAT_MODE="normal"
             ;;
         *)
-            COMPAT_MODE="unknown"
+            OPENWRT_MAJOR="unknown"
+            COMPAT_MODE="legacy"
             ;;
     esac
+
+    print_ok "OpenWrt      : $DISTRIB_RELEASE"
+
+    if [ -n "$DISTRIB_REVISION" ]; then
+        print_ok "Revision     : $DISTRIB_REVISION"
+    else
+        print_ok "Revision     : unknown"
+    fi
+
+    print_ok "Machine      : $(uname -m 2>/dev/null)"
+    print_ok "Mode         : $COMPAT_MODE"
 
     return 0
 }
 
-# =========================================================
-# OPKG ARCHITECTURE
-# =========================================================
 
 detect_architecture() {
 
@@ -188,10 +198,15 @@ detect_architecture() {
         [ "$TYPE" = "arch" ] || continue
         [ "$ARCH" = "all" ] && continue
 
-        if [ -z "$BEST_PRIORITY" ]; then
-            BEST_ARCH="$ARCH"
-            BEST_PRIORITY="$PRIORITY"
-        elif [ "$PRIORITY" -gt "$BEST_PRIORITY" ] 2>/dev/null; then
+        case "$PRIORITY" in
+            ''|*[!0-9]*)
+                continue
+                ;;
+        esac
+
+        if [ -z "$BEST_PRIORITY" ] ||
+           [ "$PRIORITY" -gt "$BEST_PRIORITY" ]; then
+
             BEST_ARCH="$ARCH"
             BEST_PRIORITY="$PRIORITY"
         fi
@@ -200,53 +215,94 @@ detect_architecture() {
 $(opkg print-architecture 2>/dev/null)
 EOF
 
-    [ -n "$BEST_ARCH" ]
-}
-
-# =========================================================
-# QTUN STATUS
-# =========================================================
-
-detect_qtun() {
-
-    QTUN_INSTALLED="no"
-    QTUN_VERSION=""
-
-    if opkg status luci-app-qtun 2>/dev/null | grep -q "^Status:.*installed"; then
-        QTUN_INSTALLED="yes"
-
-        QTUN_VERSION=$(opkg status luci-app-qtun 2>/dev/null \
-            | sed -n 's/^Version: //p' \
-            | head -n 1)
-
-        [ -z "$QTUN_VERSION" ] && QTUN_VERSION="unknown"
+    if [ -z "$BEST_ARCH" ]; then
+        print_error "Architecture opkg tidak ditemukan."
+        return 1
     fi
+
+    print_ok "Architecture : $BEST_ARCH"
+    print_ok "Priority     : $BEST_PRIORITY"
+
+    log "Architecture: $BEST_ARCH"
+    log "Priority: $BEST_PRIORITY"
+
+    return 0
 }
 
+
+detect_package_manager() {
+
+    if command -v opkg >/dev/null 2>&1; then
+        print_ok "Package mgr  : opkg"
+        return 0
+    fi
+
+    print_error "opkg tidak ditemukan."
+    return 1
+}
+
+
 # =========================================================
-# INTERNET
+# INTERNET CHECK
 # =========================================================
 
 check_internet() {
 
-    if command -v wget >/dev/null 2>&1; then
-        wget --no-check-certificate \
-            --spider \
-            -q \
-            --timeout=8 \
-            "$BASE_URL" >/dev/null 2>&1
+    printf "  ${CYAN}${ARROW}${NC} Checking internet..."
 
-        return $?
+    if wget --no-check-certificate \
+        --spider -q \
+        --timeout=8 \
+        "https://github.com" 2>/dev/null; then
+
+        echo " ${GREEN}OK${NC}"
+        log "Internet check: OK"
+        return 0
     fi
+
+    echo " ${RED}FAILED${NC}"
+
+    log "Internet check: FAILED"
 
     return 1
 }
 
+
 # =========================================================
-# PACKAGE SELECTION
+# DISK CHECK
 # =========================================================
 
-select_package() {
+check_disk_space() {
+
+    AVAILABLE="$(df /tmp 2>/dev/null | awk 'NR==2 {print $4}')"
+
+    case "$AVAILABLE" in
+        ''|*[!0-9]*)
+            print_warn "Tidak dapat membaca free space."
+            return 0
+            ;;
+    esac
+
+    REQUIRED=50000
+
+    if [ "$AVAILABLE" -lt "$REQUIRED" ]; then
+        print_error "Storage tidak cukup."
+        print_info "Required : ${REQUIRED} KB"
+        print_info "Available: ${AVAILABLE} KB"
+        return 1
+    fi
+
+    print_ok "Storage cukup"
+
+    return 0
+}
+
+
+# =========================================================
+# PACKAGE DETECTION
+# =========================================================
+
+find_package() {
 
     SPECIFIC_PACKAGE="luci-app-qtun_${VERSION}_${BEST_ARCH}.ipk"
     SPECIFIC_URL="$BASE_URL/$SPECIFIC_PACKAGE"
@@ -258,561 +314,454 @@ select_package() {
     SELECTED_URL=""
 
     echo
-    info "Mencari package QTUN yang sesuai..."
+    print_info "Mencari package QTUN..."
 
     if wget --no-check-certificate \
-        --spider \
-        -q \
+        --spider -q \
+        --timeout=15 \
         "$SPECIFIC_URL" 2>/dev/null; then
 
         SELECTED_PACKAGE="$SPECIFIC_PACKAGE"
         SELECTED_URL="$SPECIFIC_URL"
 
-        ok "Package ditemukan:"
-        echo "      $SELECTED_PACKAGE"
+        print_ok "Specific package ditemukan"
+        print_info "$SELECTED_PACKAGE"
+
         return 0
     fi
 
-    warn "Package architecture-specific tidak ditemukan."
-    info "Mencoba universal package..."
+    print_warn "Specific package tidak ditemukan."
 
     if wget --no-check-certificate \
-        --spider \
-        -q \
+        --spider -q \
+        --timeout=15 \
         "$UNIVERSAL_URL" 2>/dev/null; then
 
         SELECTED_PACKAGE="$UNIVERSAL_PACKAGE"
         SELECTED_URL="$UNIVERSAL_URL"
 
-        ok "Universal package ditemukan:"
-        echo "      $SELECTED_PACKAGE"
+        print_ok "Universal package ditemukan"
+        print_info "$SELECTED_PACKAGE"
+
+        return 0
+    fi
+
+    print_error "Package QTUN yang kompatibel tidak ditemukan."
+
+    return 1
+}
+
+
+# =========================================================
+# PACKAGE LIST
+# =========================================================
+
+update_opkg() {
+
+    echo
+    print_info "Updating package lists..."
+
+    if opkg update >> "$LOG_FILE" 2>&1; then
+        print_ok "Package lists updated"
+        return 0
+    fi
+
+    print_warn "opkg update gagal."
+
+    if [ "$COMPAT_MODE" = "legacy" ]; then
+        print_warn "OpenWrt lama terdeteksi."
+        print_info "Installer akan mencoba melanjutkan."
+        return 0
+    fi
+
+    print_warn "QTUN package berasal dari GitHub."
+    print_info "Installer akan mencoba melanjutkan."
+
+    return 0
+}
+
+
+# =========================================================
+# DOWNLOAD
+# =========================================================
+
+download_package() {
+
+    rm -f "$PACKAGE_FILE"
+
+    echo
+    print_info "Downloading QTUN..."
+    echo
+    print_info "$SELECTED_PACKAGE"
+    echo
+
+    wget --no-check-certificate \
+        --progress=dot:giga \
+        -O "$PACKAGE_FILE" \
+        "$SELECTED_URL" 2>&1 | tee -a "$LOG_FILE"
+
+    if [ "${PIPESTATUS:-}" ]; then
+        :
+    fi
+
+    if [ ! -s "$PACKAGE_FILE" ]; then
+        echo
+        print_error "Download gagal."
+        return 1
+    fi
+
+    echo
+    print_ok "Download completed."
+
+    return 0
+}
+
+
+# =========================================================
+# IPK VALIDATION
+# =========================================================
+
+validate_ipk() {
+
+    echo
+    print_info "Checking IPK package..."
+
+    if ! tar -tf "$PACKAGE_FILE" >/dev/null 2>&1; then
+        print_error "Package tidak dapat dibaca."
+        return 1
+    fi
+
+    TAR_LIST="$(tar -tf "$PACKAGE_FILE" 2>/dev/null)"
+
+    if ! echo "$TAR_LIST" | grep -q "^debian-binary$"; then
+        print_error "debian-binary tidak ditemukan."
+        return 1
+    fi
+
+    if ! echo "$TAR_LIST" | grep -q "^control.tar.gz$"; then
+        print_error "control.tar.gz tidak ditemukan."
+        return 1
+    fi
+
+    if ! echo "$TAR_LIST" | grep -q "^data.tar.gz$"; then
+        print_error "data.tar.gz tidak ditemukan."
+        return 1
+    fi
+
+    print_ok "IPK package valid."
+
+    return 0
+}
+
+
+# =========================================================
+# EXISTING QTUN CHECK
+# =========================================================
+
+is_installed() {
+
+    if opkg status luci-app-qtun 2>/dev/null |
+       grep -q "^Status:.*installed"; then
         return 0
     fi
 
     return 1
 }
 
-# =========================================================
-# SYSTEM INFORMATION
-# =========================================================
 
-show_system() {
+show_installed_status() {
 
-    header
+    if is_installed; then
 
-    echo -e "${WHITE}${BOLD}System Information${NC}"
-    line
-
-    echo "  OpenWrt       : $DISTRIB_RELEASE"
-    echo "  Revision      : $DISTRIB_REVISION"
-    echo "  Target        : $DISTRIB_TARGET"
-    echo "  Machine       : $MACHINE"
-    echo "  Architecture  : $BEST_ARCH"
-
-    if [ "$COMPAT_MODE" = "legacy" ]; then
-        echo
-        echo -e "  ${YELLOW}${BOLD}Compatibility  : LEGACY / FW21-22${NC}"
-    else
-        echo
-        echo -e "  ${GREEN}${BOLD}Compatibility  : NORMAL${NC}"
-    fi
-
-    echo
-}
-
-# =========================================================
-# INITIAL MENU
-# =========================================================
-
-initial_menu() {
-
-    header
-
-    if [ "$QTUN_INSTALLED" = "yes" ]; then
-
-        echo -e "${GREEN}${BOLD}QTUN TERDETEKSI${NC}"
-        echo
-        echo "  Installed version : $QTUN_VERSION"
-        echo "  Latest version    : $VERSION"
-        echo
-
-        line
+        VERSION_INSTALLED="$(
+            opkg status luci-app-qtun 2>/dev/null |
+            awk -F': ' '/^Version:/ {print $2; exit}'
+        )"
 
         echo
-        echo -e "  ${GREEN}1${NC}. Update QTUN"
-        echo -e "  ${BLUE}2${NC}. Repair QTUN"
-        echo -e "  ${YELLOW}3${NC}. Reinstall QTUN"
-        echo -e "  ${RED}4${NC}. Uninstall QTUN"
-        echo -e "  ${WHITE}0${NC}. Cancel"
-        echo
+        print_ok "QTUN        : INSTALLED"
 
-        printf "Pilih [0-4]: "
-        read -r choice
-
-        case "$choice" in
-            1)
-                install_mode="update"
-                ;;
-            2)
-                install_mode="repair"
-                ;;
-            3)
-                install_mode="reinstall"
-                ;;
-            4)
-                uninstall_qtun
-                exit 0
-                ;;
-            0)
-                echo
-                info "Dibatalkan."
-                exit 0
-                ;;
-            *)
-                error "Pilihan tidak valid."
-                sleep 1
-                initial_menu
-                ;;
-        esac
+        if [ -n "$VERSION_INSTALLED" ]; then
+            print_ok "Version     : $VERSION_INSTALLED"
+        fi
 
     else
 
-        echo -e "${YELLOW}${BOLD}QTUN BELUM TERINSTALL${NC}"
         echo
-        echo "Installer akan memasang QTUN v$VERSION"
-        echo "beserta konfigurasi service yang diperlukan."
-        echo
+        print_info "QTUN        : NOT INSTALLED"
 
-        line
-
-        echo
-        echo -e "  ${GREEN}1${NC}. Lanjutkan Instalasi"
-        echo -e "  ${RED}2${NC}. Cancel"
-        echo -e "  ${YELLOW}3${NC}. Uninstall / Cleanup"
-        echo
-
-        printf "Pilih [1-3]: "
-        read -r choice
-
-        case "$choice" in
-            1)
-                install_mode="install"
-                ;;
-            2)
-                echo
-                info "Instalasi dibatalkan."
-                exit 0
-                ;;
-            3)
-                uninstall_qtun
-                exit 0
-                ;;
-            *)
-                error "Pilihan tidak valid."
-                sleep 1
-                initial_menu
-                ;;
-        esac
     fi
 }
 
+
 # =========================================================
-# UNINSTALL
+# BACKUP CONFIG
 # =========================================================
 
-uninstall_qtun() {
+backup_config() {
 
-    header
+    BACKUP_DIR="$TMP_DIR/backup"
 
-    echo -e "${RED}${BOLD}UNINSTALL QTUN${NC}"
-    echo
-    echo "Tindakan ini akan menghapus package QTUN."
-    echo
-    echo -e "${YELLOW}Konfigurasi /etc/qtun juga akan dihapus.${NC}"
-    echo
+    rm -rf "$BACKUP_DIR"
+    mkdir -p "$BACKUP_DIR"
 
-    line
-
-    echo
-    echo -e "  ${GREEN}1${NC}. Lanjutkan Uninstall"
-    echo -e "  ${RED}2${NC}. Cancel"
-    echo
-
-    printf "Pilih [1-2]: "
-    read -r choice
-
-    [ "$choice" = "1" ] || {
-        info "Uninstall dibatalkan."
-        return 0
-    }
-
-    echo
-    step_start 1 4 "Menghentikan QTUN"
-
-    if [ -x /etc/init.d/qtun_autoboot ]; then
-        /etc/init.d/qtun_autoboot stop >>"$LOG_FILE" 2>&1
-        /etc/init.d/qtun_autoboot disable >>"$LOG_FILE" 2>&1
+    if [ -f /etc/config/qtun ]; then
+        cp -f /etc/config/qtun "$BACKUP_DIR/qtun"
+        print_ok "QTUN configuration backed up"
     fi
 
-    step_done
-
-    step_start 2 4 "Menghapus package"
-
-    if opkg status luci-app-qtun 2>/dev/null | grep -q "^Status:.*installed"; then
-        opkg remove luci-app-qtun >>"$LOG_FILE" 2>&1
+    if [ -d /etc/qtun ]; then
+        cp -rf /etc/qtun "$BACKUP_DIR/etc-qtun"
+        print_ok "QTUN data backed up"
     fi
-
-    step_done
-
-    step_start 3 4 "Membersihkan konfigurasi"
-
-    rm -rf /etc/qtun
-    rm -f /etc/config/qtun
-    rm -f /etc/init.d/qtun_autoboot
-
-    step_done
-
-    step_start 4 4 "Membersihkan cache LuCI"
-
-    rm -rf /tmp/luci-indexcache
-    rm -rf /tmp/luci-modulecache
-
-    if [ -x /etc/init.d/rpcd ]; then
-        /etc/init.d/rpcd restart >>"$LOG_FILE" 2>&1
-    fi
-
-    step_done
-
-    echo
-    line
-    echo
-    echo -e "${GREEN}${BOLD}QTUN berhasil di-uninstall.${NC}"
-    echo
-
-    pause
 }
 
+
+restore_config() {
+
+    BACKUP_DIR="$TMP_DIR/backup"
+
+    if [ -f "$BACKUP_DIR/qtun" ]; then
+        cp -f "$BACKUP_DIR/qtun" /etc/config/qtun
+        print_ok "QTUN configuration restored"
+    fi
+
+    if [ -d "$BACKUP_DIR/etc-qtun" ]; then
+        rm -rf /etc/qtun
+        cp -rf "$BACKUP_DIR/etc-qtun" /etc/qtun
+        print_ok "QTUN data restored"
+    fi
+}
+
+
 # =========================================================
-# INSTALLATION
+# INSTALL
 # =========================================================
 
 install_qtun() {
 
-    TOTAL=8
-
     header
 
-    echo -e "${WHITE}${BOLD}Preparing QTUN Installation${NC}"
+    echo "${WHITE}${BOLD}QTUN INSTALLATION${NC}"
     echo
-    echo "  Version      : $VERSION"
-    echo "  OpenWrt      : $DISTRIB_RELEASE"
-    echo "  Architecture : $BEST_ARCH"
 
-    if [ "$COMPAT_MODE" = "legacy" ]; then
-        echo "  Compatibility : Legacy mode"
-    else
-        echo "  Compatibility : Normal mode"
+    # -----------------------------------------------------
+    # SYSTEM CHECK
+    # -----------------------------------------------------
+
+    echo "${BLUE}${BOLD}[1/7] System Check${NC}"
+
+    if ! detect_system; then
+        pause_screen
+        return 1
+    fi
+
+    if ! detect_package_manager; then
+        pause_screen
+        return 1
+    fi
+
+    if ! detect_architecture; then
+        pause_screen
+        return 1
+    fi
+
+    if ! check_disk_space; then
+        pause_screen
+        return 1
+    fi
+
+    if ! check_internet; then
+
+        echo
+        print_error "Tidak ada koneksi internet."
+        pause_screen
+
+        return 1
     fi
 
     echo
-    line
+
 
     # -----------------------------------------------------
-    # STEP 1
+    # COMPATIBILITY
     # -----------------------------------------------------
 
-    step_start 1 "$TOTAL" "Memeriksa sistem"
+    echo "${BLUE}${BOLD}[2/7] Compatibility Check${NC}"
 
-    if [ ! -f /etc/openwrt_release ]; then
-        step_failed
-        installation_failed
+    case "$OPENWRT_MAJOR" in
+
+        21)
+            print_warn "OpenWrt 21.x terdeteksi."
+            print_info "Legacy compatibility mode aktif."
+            ;;
+
+        22)
+            print_warn "OpenWrt 22.x terdeteksi."
+            print_info "Legacy compatibility mode aktif."
+            ;;
+
+        23|24)
+            print_ok "OpenWrt $OPENWRT_MAJOR.x supported."
+            ;;
+
+        *)
+            print_warn "Versi OpenWrt tidak dikenal."
+            print_warn "Installer akan melanjutkan dengan compatibility mode."
+            ;;
+
+    esac
+
+    echo
+
+
+    # -----------------------------------------------------
+    # PACKAGE
+    # -----------------------------------------------------
+
+    echo "${BLUE}${BOLD}[3/7] Package Detection${NC}"
+
+    if ! find_package; then
+        pause_screen
         return 1
     fi
 
-    if ! command -v opkg >/dev/null 2>&1; then
-        step_failed
-        installation_failed
+    echo
+
+
+    # -----------------------------------------------------
+    # OPKG UPDATE
+    # -----------------------------------------------------
+
+    echo "${BLUE}${BOLD}[4/7] Package Lists${NC}"
+
+    update_opkg
+
+    echo
+
+
+    # -----------------------------------------------------
+    # DOWNLOAD
+    # -----------------------------------------------------
+
+    echo "${BLUE}${BOLD}[5/7] Download & Validation${NC}"
+
+    if ! download_package; then
+        pause_screen
         return 1
     fi
 
-    if ! command -v wget >/dev/null 2>&1; then
-        step_failed
-        error "wget tidak ditemukan."
-        installation_failed
-        return 1
-    fi
-
-    step_done
-
-    # -----------------------------------------------------
-    # STEP 2
-    # -----------------------------------------------------
-
-    step_start 2 "$TOTAL" "Memeriksa kompatibilitas"
-
-    if [ "$COMPAT_MODE" = "legacy" ]; then
-        echo -e "      ${YELLOW}!${NC} OpenWrt $DISTRIB_RELEASE detected"
-        echo -e "      ${YELLOW}!${NC} Legacy compatibility mode"
-    else
-        echo -e "      ${GREEN}${CHECK}${NC} OpenWrt $DISTRIB_RELEASE"
-    fi
-
-    step_done
-
-    # -----------------------------------------------------
-    # STEP 3
-    # -----------------------------------------------------
-
-    step_start 3 "$TOTAL" "Memeriksa koneksi internet"
-
-    if check_internet; then
-        step_done
-    else
-        step_failed
-        error "Tidak dapat mengakses GitHub."
-        installation_failed
-        return 1
-    fi
-
-    # -----------------------------------------------------
-    # STEP 4
-    # -----------------------------------------------------
-
-    step_start 4 "$TOTAL" "Mencari package QTUN"
-
-    if select_package; then
-        step_done
-    else
-        step_failed
-        error "Compatible QTUN package tidak ditemukan."
-        installation_failed
-        return 1
-    fi
-
-    # -----------------------------------------------------
-    # STEP 5
-    # -----------------------------------------------------
-
-    step_start 5 "$TOTAL" "Memperbarui package lists"
-
-    opkg update >>"$LOG_FILE" 2>&1
-
-    if [ $? -eq 0 ]; then
-        step_done
-    else
-        step_failed
-        error "opkg update gagal."
-        installation_failed
-        return 1
-    fi
-
-    # -----------------------------------------------------
-    # STEP 6
-    # -----------------------------------------------------
-
-    step_start 6 "$TOTAL" "Mengunduh QTUN"
-
-    rm -f "$PACKAGE_FILE"
-
-    wget --no-check-certificate \
-        -O "$PACKAGE_FILE" \
-        "$SELECTED_URL" >>"$LOG_FILE" 2>&1 &
-    
-    DOWNLOAD_PID=$!
-
-    spinner "Downloading $SELECTED_PACKAGE" "$DOWNLOAD_PID"
-
-    wait "$DOWNLOAD_PID"
-
-    if [ $? -eq 0 ] && [ -s "$PACKAGE_FILE" ]; then
-        step_done
-    else
-        step_failed
+    if ! validate_ipk; then
         rm -f "$PACKAGE_FILE"
-        installation_failed
+        pause_screen
         return 1
     fi
+
+    echo
+
 
     # -----------------------------------------------------
-    # STEP 7
+    # INSTALL
     # -----------------------------------------------------
 
-    step_start 7 "$TOTAL" "Memvalidasi dan menginstall QTUN"
+    echo "${BLUE}${BOLD}[6/7] Installing QTUN${NC}"
 
-    TAR_LIST="$(tar -tf "$PACKAGE_FILE" 2>/dev/null)"
+    backup_config
 
-    if [ -z "$TAR_LIST" ]; then
-        step_failed
-        error "IPK tidak dapat dibaca."
-        rm -f "$PACKAGE_FILE"
-        installation_failed
-        return 1
-    fi
+    echo
 
-    if ! echo "$TAR_LIST" | grep -q "^debian-binary$"; then
-        step_failed
-        error "debian-binary tidak ditemukan."
-        rm -f "$PACKAGE_FILE"
-        installation_failed
-        return 1
-    fi
+    if opkg install "$PACKAGE_FILE" >> "$LOG_FILE" 2>&1; then
 
-    if ! echo "$TAR_LIST" | grep -q "^control.tar.gz$"; then
-        step_failed
-        error "control.tar.gz tidak ditemukan."
-        rm -f "$PACKAGE_FILE"
-        installation_failed
-        return 1
-    fi
+        print_ok "QTUN package installed."
 
-    if ! echo "$TAR_LIST" | grep -q "^data.tar.gz$"; then
-        step_failed
-        error "data.tar.gz tidak ditemukan."
-        rm -f "$PACKAGE_FILE"
-        installation_failed
-        return 1
-    fi
-
-    echo -e "      ${GREEN}${CHECK}${NC} IPK package valid"
-
-    opkg install "$PACKAGE_FILE" >>"$LOG_FILE" 2>&1
-
-    if [ $? -eq 0 ]; then
-        step_done
     else
-        step_failed
+
+        print_error "QTUN installation gagal."
+
+        echo
+        print_info "Detail error tersedia di:"
+        print_info "$LOG_FILE"
+
         rm -f "$PACKAGE_FILE"
-        installation_failed
+
         return 1
     fi
 
     rm -f "$PACKAGE_FILE"
 
+    restore_config
+
+    echo
+
+
     # -----------------------------------------------------
-    # STEP 8
+    # FINALIZATION
     # -----------------------------------------------------
 
-    step_start 8 "$TOTAL" "Mengaktifkan QTUN"
-
-    SERVICE_OK=1
+    echo "${BLUE}${BOLD}[7/7] Finalizing${NC}"
 
     if [ -x /etc/init.d/qtun_autoboot ]; then
 
-        /etc/init.d/qtun_autoboot enable >>"$LOG_FILE" 2>&1
-
-        if [ $? -ne 0 ]; then
-            SERVICE_OK=0
+        if /etc/init.d/qtun_autoboot enable >> "$LOG_FILE" 2>&1; then
+            print_ok "QTUN autoboot enabled."
+        else
+            print_warn "Failed to enable QTUN autoboot."
         fi
 
-        /etc/init.d/qtun_autoboot start >>"$LOG_FILE" 2>&1
-
-        if [ $? -ne 0 ]; then
-            SERVICE_OK=0
+        if /etc/init.d/qtun_autoboot start >> "$LOG_FILE" 2>&1; then
+            print_ok "QTUN started."
+        else
+            print_warn "QTUN start returned an error."
         fi
 
-        echo -e "      ${GREEN}${CHECK}${NC} qtun_autoboot"
     else
-        echo -e "      ${YELLOW}!${NC} qtun_autoboot tidak ditemukan"
+
+        print_warn "qtun_autoboot tidak ditemukan."
+
     fi
+
 
     if [ -x /etc/init.d/rpcd ]; then
-        /etc/init.d/rpcd restart >>"$LOG_FILE" 2>&1
-        echo -e "      ${GREEN}${CHECK}${NC} rpcd restarted"
+
+        if /etc/init.d/rpcd restart >> "$LOG_FILE" 2>&1; then
+            print_ok "rpcd restarted."
+        else
+            print_warn "rpcd restart gagal."
+        fi
+
     fi
 
-    if [ "$SERVICE_OK" -eq 1 ]; then
-        step_done
-    else
-        warn "Service QTUN perlu diperiksa."
+
+    # -----------------------------------------------------
+    # VERIFY
+    # -----------------------------------------------------
+
+    echo
+
+    if is_installed; then
+
+        echo
+        echo "${GREEN}${BOLD}╔══════════════════════════════════════════════════════════╗${NC}"
+        echo "${GREEN}${BOLD}║              ✓ QTUN INSTALLATION COMPLETE                ║${NC}"
+        echo "${GREEN}${BOLD}╚══════════════════════════════════════════════════════════╝${NC}"
+
+        echo
+        print_ok "QTUN berhasil diinstall."
+        print_ok "OpenWrt      : $DISTRIB_RELEASE"
+        print_ok "Architecture : $BEST_ARCH"
+        print_ok "Package      : $SELECTED_PACKAGE"
+
+        echo
+
+        return 0
+
     fi
 
-    installation_success
+    print_error "Installation selesai tetapi validasi package gagal."
+
+    return 1
 }
 
-# =========================================================
-# INSTALL SUCCESS
-# =========================================================
-
-installation_success() {
-
-    detect_qtun
-
-    clear
-    echo
-    echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}${BOLD}║${NC}                                                    ${GREEN}${BOLD}║${NC}"
-    echo -e "${GREEN}${BOLD}║${NC}          ${WHITE}QTUN INSTALLATION COMPLETE${NC}            ${GREEN}${BOLD}║${NC}"
-    echo -e "${GREEN}${BOLD}║${NC}                                                    ${GREEN}${BOLD}║${NC}"
-    echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════════════╝${NC}"
-    echo
-
-    echo -e "${WHITE}${BOLD}Installation Summary${NC}"
-    line
-
-    echo
-    echo "  QTUN Version  : ${QTUN_VERSION:-$VERSION}"
-    echo "  OpenWrt       : $DISTRIB_RELEASE"
-    echo "  Architecture  : $BEST_ARCH"
-    echo "  Package       : $SELECTED_PACKAGE"
-
-    if [ "$COMPAT_MODE" = "legacy" ]; then
-        echo "  Compatibility  : Legacy"
-    else
-        echo "  Compatibility  : Normal"
-    fi
-
-    echo
-    ok "QTUN berhasil diinstall."
-    ok "Autoboot dikonfigurasi."
-    ok "RPCD direstart."
-
-    echo
-    line
-    echo
-    echo -e "${CYAN}${BOLD}QTUN siap digunakan.${NC}"
-    echo
-
-    pause
-}
-
-# =========================================================
-# INSTALL FAILURE
-# =========================================================
-
-installation_failed() {
-
-    echo
-    echo -e "${RED}${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}${BOLD}║${NC}             INSTALLATION FAILED                    ${RED}${BOLD}║${NC}"
-    echo -e "${RED}${BOLD}╚══════════════════════════════════════════════════════╝${NC}"
-    echo
-
-    echo -e "${YELLOW}QTUN tidak berhasil menyelesaikan instalasi.${NC}"
-    echo
-
-    echo -e "  ${GREEN}1${NC}. Coba Lagi"
-    echo -e "  ${BLUE}2${NC}. Cancel"
-    echo -e "  ${RED}3${NC}. Hapus Instalasi / Cleanup"
-    echo
-
-    printf "Pilih [1-3]: "
-    read -r choice
-
-    case "$choice" in
-        1)
-            install_qtun
-            ;;
-        2)
-            info "Instalasi dibatalkan."
-            ;;
-        3)
-            uninstall_qtun
-            ;;
-        *)
-            info "Tidak ada tindakan."
-            ;;
-    esac
-}
 
 # =========================================================
 # REPAIR
@@ -822,125 +771,337 @@ repair_qtun() {
 
     header
 
-    echo -e "${BLUE}${BOLD}QTUN REPAIR${NC}"
-    echo
-    echo "Repair akan mencoba memperbaiki service dan cache LuCI."
+    echo "${YELLOW}${BOLD}QTUN REPAIR / REINSTALL${NC}"
     echo
 
-    line
+    if is_installed; then
+        print_ok "QTUN terdeteksi."
+    else
+        print_warn "QTUN belum terinstall."
+        print_info "Repair akan melakukan fresh installation."
+    fi
 
     echo
-    printf "Lanjutkan repair? [Y/n]: "
-    read -r answer
+    echo "Pilih tindakan:"
+    echo
+    echo "  ${GREEN}1${NC}. Lanjutkan"
+    echo "  ${RED}2${NC}. Cancel"
+    echo
 
-    case "$answer" in
-        n|N)
-            info "Repair dibatalkan."
-            return 0
+    printf "Pilihan [1-2]: "
+    read choice
+
+    case "$choice" in
+        1)
+            install_qtun
+            ;;
+        *)
+            echo
+            print_warn "Repair dibatalkan."
             ;;
     esac
 
+    pause_screen
+}
+
+
+# =========================================================
+# UNINSTALL
+# =========================================================
+
+uninstall_qtun() {
+
+    header
+
+    echo "${RED}${BOLD}QTUN UNINSTALL${NC}"
     echo
 
-    step_start 1 4 "Membersihkan cache LuCI"
+    if ! is_installed; then
+        print_warn "QTUN tidak terinstall."
 
-    rm -rf /tmp/luci-indexcache
-    rm -rf /tmp/luci-modulecache
-
-    step_done
-
-    step_start 2 4 "Memeriksa service QTUN"
-
-    if [ -x /etc/init.d/qtun_autoboot ]; then
-        /etc/init.d/qtun_autoboot enable >>"$LOG_FILE" 2>&1
-        step_done
-    else
-        step_failed
-        warn "qtun_autoboot tidak ditemukan."
+        pause_screen
+        return 0
     fi
 
-    step_start 3 4 "Restarting QTUN"
+    print_warn "Tindakan ini akan menghapus package QTUN."
+    echo
 
-    if [ -x /etc/init.d/qtun_autoboot ]; then
-        /etc/init.d/qtun_autoboot restart >>"$LOG_FILE" 2>&1
+    echo "  ${GREEN}1${NC}. Lanjutkan uninstall"
+    echo "  ${RED}2${NC}. Cancel"
+    echo
 
-        if [ $? -eq 0 ]; then
-            step_done
-        else
-            step_failed
+    printf "Pilihan [1-2]: "
+    read choice
+
+    case "$choice" in
+
+        1)
+
+            echo
+            print_info "Stopping QTUN..."
+
+            if [ -x /etc/init.d/qtun_autoboot ]; then
+                /etc/init.d/qtun_autoboot stop >/dev/null 2>&1
+                /etc/init.d/qtun_autoboot disable >/dev/null 2>&1
+            fi
+
+            print_info "Removing QTUN package..."
+
+            if opkg remove luci-app-qtun >> "$LOG_FILE" 2>&1; then
+
+                print_ok "QTUN package removed."
+
+            else
+
+                print_error "Failed to remove QTUN package."
+
+            fi
+
+            echo
+            print_info "Membersihkan cache LuCI..."
+
+            rm -rf \
+                /tmp/luci-indexcache \
+                /tmp/luci-modulecache \
+                2>/dev/null
+
+            if [ -x /etc/init.d/rpcd ]; then
+                /etc/init.d/rpcd restart >/dev/null 2>&1
+            fi
+
+            echo
+            print_ok "QTUN uninstall selesai."
+
+            ;;
+
+        *)
+
+            echo
+            print_warn "Uninstall dibatalkan."
+
+            ;;
+
+    esac
+
+    pause_screen
+}
+
+
+# =========================================================
+# COMPATIBILITY CHECK
+# =========================================================
+
+compatibility_check() {
+
+    header
+
+    echo "${WHITE}${BOLD}SYSTEM COMPATIBILITY CHECK${NC}"
+    echo
+
+    detect_system
+    echo
+
+    detect_package_manager
+    detect_architecture
+    echo
+
+    check_disk_space
+    check_internet
+
+    echo
+    echo "${CYAN}${BOLD}Package Check${NC}"
+    echo
+
+    if find_package; then
+        print_ok "QTUN package tersedia."
+    else
+        print_error "QTUN package tidak tersedia."
+    fi
+
+    echo
+    echo "${CYAN}${BOLD}Result${NC}"
+    echo
+
+    case "$OPENWRT_MAJOR" in
+
+        21)
+            print_warn "OpenWrt 21.x menggunakan legacy compatibility mode."
+            print_info "Direkomendasikan melakukan test install terlebih dahulu."
+            ;;
+
+        22)
+            print_warn "OpenWrt 22.x menggunakan legacy compatibility mode."
+            ;;
+
+        23|24)
+            print_ok "OpenWrt $OPENWRT_MAJOR.x menggunakan normal mode."
+            ;;
+
+        *)
+            print_warn "Versi OpenWrt tidak dikenali."
+            ;;
+
+    esac
+
+    echo
+    pause_screen
+}
+
+
+# =========================================================
+# LOG VIEWER
+# =========================================================
+
+show_log() {
+
+    header
+
+    echo "${WHITE}${BOLD}QTUN INSTALLATION LOG${NC}"
+    echo
+
+    if [ -s "$LOG_FILE" ]; then
+
+        cat "$LOG_FILE"
+
+    else
+
+        print_warn "Belum ada installation log."
+
+    fi
+
+    echo
+    pause_screen
+}
+
+
+# =========================================================
+# MAIN MENU
+# =========================================================
+
+main_menu() {
+
+    while true
+    do
+
+        header
+
+        if [ -f /etc/openwrt_release ]; then
+            . /etc/openwrt_release
         fi
-    else
-        step_failed
-    fi
 
-    step_start 4 4 "Restarting RPCD"
+        echo "${CYAN}System${NC}"
+        echo
+        echo "  OpenWrt      : ${DISTRIB_RELEASE:-Unknown}"
+        echo "  Machine      : $(uname -m 2>/dev/null)"
+        echo
 
-    if [ -x /etc/init.d/rpcd ]; then
-        /etc/init.d/rpcd restart >>"$LOG_FILE" 2>&1
-        step_done
-    else
-        step_failed
-    fi
+        show_installed_status
+
+        echo
+        echo "${CYAN}${BOLD}Pilih tindakan:${NC}"
+        echo
+
+        echo "  ${GREEN}1${NC}. Install QTUN"
+        echo "  ${YELLOW}2${NC}. Repair / Reinstall QTUN"
+        echo "  ${RED}3${NC}. Uninstall QTUN"
+        echo "  ${BLUE}4${NC}. Check Compatibility"
+        echo "  ${CYAN}5${NC}. View Installation Log"
+        echo "  ${WHITE}0${NC}. Exit"
+
+        echo
+        printf "Pilihan [0-5]: "
+        read MENU_CHOICE
+
+        case "$MENU_CHOICE" in
+
+            1)
+
+                if is_installed; then
+
+                    header
+
+                    print_warn "QTUN sudah terinstall."
+                    echo
+
+                    echo "  ${GREEN}1${NC}. Reinstall"
+                    echo "  ${RED}2${NC}. Cancel"
+                    echo
+
+                    printf "Pilihan [1-2]: "
+                    read r
+
+                    case "$r" in
+                        1)
+                            install_qtun
+                            pause_screen
+                            ;;
+                        *)
+                            ;;
+                    esac
+
+                else
+
+                    install_qtun
+                    pause_screen
+
+                fi
+
+                ;;
+
+            2)
+                repair_qtun
+                ;;
+
+            3)
+                uninstall_qtun
+                ;;
+
+            4)
+                compatibility_check
+                ;;
+
+            5)
+                show_log
+                ;;
+
+            0)
+
+                clear
+                echo
+                echo "${GREEN}${BOLD}QTUN Smart Installer selesai.${NC}"
+                echo
+                exit 0
+                ;;
+
+            *)
+
+                print_error "Pilihan tidak valid."
+                sleep 1
+                ;;
+
+        esac
+
+    done
+}
+
+
+# =========================================================
+# ROOT CHECK
+# =========================================================
+
+if [ "$(id -u 2>/dev/null)" != "0" ]; then
 
     echo
-    echo -e "${GREEN}${BOLD}Repair selesai.${NC}"
-    pause
-}
+    echo "${RED}${BOLD}ERROR:${NC} Installer harus dijalankan sebagai root."
+    echo
+
+    exit 1
+
+fi
+
 
 # =========================================================
-# MAIN
+# START
 # =========================================================
 
-[ "$(id -u)" -eq 0 ] || {
-    echo -e "${RED}ERROR: Jalankan installer sebagai root.${NC}"
-    exit 1
-}
-
-mkdir -p "$TMP_DIR"
-: > "$LOG_FILE"
-
-detect_system || {
-    echo -e "${RED}[ERROR] OpenWrt tidak terdeteksi.${NC}"
-    exit 1
-}
-
-detect_architecture || {
-    echo -e "${RED}[ERROR] Architecture opkg tidak ditemukan.${NC}"
-    exit 1
-}
-
-detect_qtun
-
-initial_menu
-
-case "$install_mode" in
-
-    install)
-        install_qtun
-        ;;
-
-    update)
-        echo
-        echo -e "${GREEN}${BOLD}Update QTUN${NC}"
-        echo
-        install_qtun
-        ;;
-
-    reinstall)
-        uninstall_qtun
-        sleep 1
-
-        detect_system
-        detect_architecture
-        detect_qtun
-
-        install_qtun
-        ;;
-
-    repair)
-        repair_qtun
-        ;;
-
-esac
-
-exit 0
+main_menu
