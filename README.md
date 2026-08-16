@@ -30,111 +30,37 @@ Dirancang untuk OpenWrt dengan auto-download core saat build dan integrasi penuh
 
 ---
 
-## 📦 Instalasi Package (.ipk / .apk)
+## 📦 Instalasi
 
-### ⚡ 1-Liner Auto Install via Wget (Rekomendasi)
+### 🧩 Compatibility / Support
 
-Installer otomatis akan mendeteksi OpenWrt, arsitektur perangkat, memilih package yang sesuai, mengunduh package, melakukan validasi, menginstal QTUN, mengaktifkan autoboot, menjalankan service, dan me-restart rpcd.
+QTUN dirancang untuk OpenWrt dengan dukungan:
 
-**Auto Installer:**
+- OpenWrt 21.02
+- OpenWrt 22.03
+- OpenWrt 23.05
+- OpenWrt 24.10
 
-```bash
-wget --no-check-certificate -O /tmp/install.sh https://raw.githubusercontent.com/charudkelser/qtun-installer-test/main/install.sh && sh /tmp/install.sh
-```
+Arsitektur yang tersedia:
 
-> Installer sedang dikembangkan dan diuji pada beberapa versi OpenWrt. Gunakan package manual di bawah jika ingin instalasi secara langsung.
+- x86_64 / AMD64
+- ARM64 / aarch64
+  - aarch64_cortex-a53
+  - aarch64_cortex-a55
+  - aarch64_generic
+- ARMv7 / ARM
+  - arm_cortex-a7_neon-vfpv4
+  - arm_cortex-a9
 
-### 📌 Universal / All Architecture
+### ⚡ Auto Installer — Rekomendasi
 
-```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-
-### 📌 Khusus OpenWrt 21.02 (Firmware STB / Custom Mod)
-
-Untuk firmware OpenWrt 21.02 yang membutuhkan registrasi architecture `all` dan instalasi package tanpa validasi dependency bawaan:
-
-```bash
-grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf && opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk && opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-
-### 📌 ARM64 - Cortex A55 (aarch64_cortex-a55)
+Cara paling mudah adalah menggunakan Smart Installer. Installer akan otomatis mendeteksi environment OpenWrt dan arsitektur perangkat, memilih package yang sesuai, mengunduh dan memvalidasi package, menginstal QTUN, mengaktifkan autoboot, menjalankan service, dan me-restart rpcd.
 
 ```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk && opkg install /tmp/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk && rm -f /tmp/luci-app-qtun_1.0.6_aarch64_cortex-a55.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
+wget --no-check-certificate -O /tmp/install.sh "https://raw.githubusercontent.com/charudkelser/luci-app-qtun/master/install.sh" && chmod +x /tmp/install.sh && /tmp/install.sh
 ```
 
-### 📌 ARM64 Generic (aarch64_generic)
-
-```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_aarch64_generic.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_aarch64_generic.ipk && opkg install /tmp/luci-app-qtun_1.0.6_aarch64_generic.ipk && rm -f /tmp/luci-app-qtun_1.0.6_aarch64_generic.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-
-### 📌 ARMv7 Neon (arm_cortex-a7_neon-vfpv4)
-
-```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk && opkg install /tmp/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk && rm -f /tmp/luci-app-qtun_1.0.6_arm_cortex-a7_neon-vfpv4.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-
-### 📌 ARMv7 (arm_cortex-a9)
-
-```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_arm_cortex-a9.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_arm_cortex-a9.ipk && opkg install /tmp/luci-app-qtun_1.0.6_arm_cortex-a9.ipk && rm -f /tmp/luci-app-qtun_1.0.6_arm_cortex-a9.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-
-### 📌 x86_64 / PC AMD64 (x86_64)
-
-```bash
-opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_x86_64.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_x86_64.ipk && opkg install /tmp/luci-app-qtun_1.0.6_x86_64.ipk && rm -f /tmp/luci-app-qtun_1.0.6_x86_64.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
-```
-
----
-
-## 📤 Metode Upload SCP (Manual)
-
-Upload file ke `/tmp`:
-
-```bash
-scp luci-app-qtun.ipk root@192.168.1.1:/tmp/
-```
-
-Untuk APK:
-
-```bash
-scp luci-app-qtun.apk root@192.168.1.1:/tmp/
-```
-
-### OPKG - OpenWrt 21
-
-```bash
-grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf
-```
-
-```bash
-opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk
-/etc/init.d/qtun_autoboot enable
-/etc/init.d/qtun_autoboot start
-/etc/init.d/rpcd restart
-```
-
-### OPKG - OpenWrt 22 / 23 / 24
-
-```bash
-opkg install --nodeps --force-depends /tmp/luci-app-qtun_1.0.6_all.ipk
-/etc/init.d/qtun_autoboot enable
-/etc/init.d/qtun_autoboot start
-/etc/init.d/rpcd restart
-```
-
-### Restart Web UI Service (Jika Dibutuhkan)
-
-```bash
-/etc/init.d/uhttpd restart 2>/dev/null || /etc/init.d/rpcd restart
-```
-
----
-
-## 📦 Install Dependency Manual (Jika Diperlukan)
+## 📦 Install Dependency Tambahan (Jika Diperlukan)
 
 ### OPKG
 
