@@ -44,8 +44,7 @@ scp luci-app-qtun.apk root@192.168.1.1:/tmp/
 ### Install
 
 ```bash
-opkg update
-opkg install /tmp/luci-app-qtun.ipk
+opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
 ```
 ```bash
 apk update
