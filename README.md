@@ -38,8 +38,10 @@ Silakan pilih satu perintah di bawah ini yang sesuai dengan arsitektur dan versi
 
 #### 📌 Universal / All Architecture (Rekomendasi OpenWrt 22.03+)
 ```bash
+```bash
 opkg update && wget --no-check-certificate -O /tmp/luci-app-qtun_1.0.6_all.ipk [https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk](https://github.com/charudkelser/luci-app-qtun/releases/download/v1.0.6/luci-app-qtun_1.0.6_all.ipk) && opkg install /tmp/luci-app-qtun_1.0.6_all.ipk && rm -f /tmp/luci-app-qtun_1.0.6_all.ipk && /etc/init.d/qtun_autoboot enable && /etc/init.d/qtun_autoboot start && /etc/init.d/rpcd restart
 ```
+
 📌 Khusus OpenWrt 21.02 (Firmware STB / Custom Mod)
 ​Memperbaiki kendala architecture mismatch dan validasi dependensi kernel/libc bawaan OpenWrt 21:
 
@@ -183,8 +185,8 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/
 ​📜 License  
 MIT License  
 Core / Binaries  
-Zivpnn Zivpn by zahidbd2  
-Q-loadQ-load by QcomWrt  
+Zivpn by zahidbd2  
+Q-load by QcomWrt  
 Clashh Mihomo by MetaCubeX  
 ​👤 Maintainer
 ​Azy / QcomWrt
