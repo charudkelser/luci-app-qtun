@@ -88,12 +88,12 @@ scp luci-app-qtun.ipk root@192.168.1.1:/tmp/
 scp luci-app-qtun.apk root@192.168.1.1:/tmp/
 ```
 
-Eksekusi Instalasi Manual
+Eksekusi Instalasi Manual khusus fw old
+
+**OPKG*** (OpenWrt 21)
 
 ```bash
-OPKG (OpenWrt 21)
-
-```grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf
+grep -q "arch all 100" /etc/opkg.conf || echo "arch all 100" >> /etc/opkg.conf
 ```
 
 ```bash
