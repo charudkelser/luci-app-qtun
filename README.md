@@ -62,18 +62,16 @@ wget --no-check-certificate -O /tmp/install.sh "https://raw.githubusercontent.co
 
 ## 📦 Install Dependency Tambahan (Jika Diperlukan)
 
-### OPKG
-
 ```bash
 opkg update
-opkg install luci-compat bash curl ca-bundle ca-certificates jq
-```
 
-### APK
-
-```bash
-apk update
-apk add luci-compat bash curl ca-bundle ca-certificates jq
+opkg install luci-compat
+opkg install bash
+opkg install curl
+opkg install ca-bundle
+opkg install ca-certificates
+opkg install jq
+opkg install coreutils-nohup
 ```
 
 ---
