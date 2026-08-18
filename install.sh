@@ -2,11 +2,12 @@
 
 # =========================================================
 # QTUN SMART INSTALLER
-# Version : 2.3.0
+# Installer Script
+# Version : 2.1.0
 # Project : luci-app-qtun
 # OpenWrt : 21.02 / 22.03 / 23.05 / 24.10 / 25.x
-# Package : IPK ONLY
-# Feature : SMART LOCAL CACHE
+# Package : IPK
+# Feature : Smart Local Cache
 # =========================================================
 
 VERSION="1.0.6"
@@ -35,13 +36,16 @@ SELECTED_URL=""
 OPENWRT_VERSION=""
 OPENWRT_BRANCH=""
 OPENWRT_ARCH=""
+
 BEST_ARCH=""
 BEST_PRIORITY=""
+
 PACKAGE_INSTALLED=0
+CACHE_USED=0
 
 
 # =========================================================
-# UI
+# UI FUNCTIONS
 # =========================================================
 
 success(){
@@ -71,8 +75,8 @@ banner(){
     printf "${CYAN}${BOLD}"
     echo "╔════════════════════════════════════════════════════════╗"
     echo "║                 QTUN SMART INSTALLER                   ║"
-    echo "║                      Version 2.3                       ║"
-    echo "║                  SMART LOCAL CACHE                     ║"
+    echo "║                      Version 2.1                       ║"
+    echo "║                    IPK SUPPORT                         ║"
     echo "╚════════════════════════════════════════════════════════╝"
     printf "${NC}"
     echo
@@ -95,39 +99,46 @@ detect_openwrt(){
     OPENWRT_VERSION="$DISTRIB_RELEASE"
     OPENWRT_ARCH="$DISTRIB_ARCH"
 
-    [ -z "$OPENWRT_ARCH" ] && OPENWRT_ARCH="$(uname -m)"
+    [ -z "$OPENWRT_ARCH" ] &&
+        OPENWRT_ARCH="$(uname -m)"
 
     case "$OPENWRT_VERSION" in
+
         21.02*)
             OPENWRT_BRANCH="21.02"
             ;;
+
         22.03*)
             OPENWRT_BRANCH="22.03"
             ;;
+
         23.05*)
             OPENWRT_BRANCH="23.05"
             ;;
+
         24.10*)
             OPENWRT_BRANCH="24.10"
             ;;
+
         25.*)
             OPENWRT_BRANCH="25.x"
             ;;
+
         *)
             OPENWRT_BRANCH="$OPENWRT_VERSION"
             ;;
+
     esac
 }
 
 
 # =========================================================
-# DETECT OPKG
+# DETECT PACKAGE MANAGER
 # =========================================================
 
 detect_package_manager(){
 
-    if command -v opkg >/dev/null 2>&1
-    then
+    if command -v opkg >/dev/null 2>&1; then
 
         PACKAGE_MANAGER="opkg"
 
@@ -136,7 +147,7 @@ detect_package_manager(){
         return 0
     fi
 
-    error_msg "opkg tidak ditemukan."
+    error_msg "Package manager opkg tidak ditemukan."
 
     return 1
 }
@@ -155,7 +166,6 @@ detect_architecture(){
     do
 
         [ "$TYPE" = "arch" ] || continue
-
         [ "$ARCH" = "all" ] && continue
 
         case "$PRIORITY" in
@@ -165,20 +175,18 @@ detect_architecture(){
         esac
 
         if [ -z "$BEST_PRIORITY" ] ||
-           [ "$PRIORITY" -gt "$BEST_PRIORITY" ]
-        then
+           [ "$PRIORITY" -gt "$BEST_PRIORITY" ]; then
 
             BEST_ARCH="$ARCH"
             BEST_PRIORITY="$PRIORITY"
 
         fi
 
-    done <<EOF
+    done <<EOF2
 $(opkg print-architecture 2>/dev/null)
-EOF
+EOF2
 
-    if [ -z "$BEST_ARCH" ]
-    then
+    if [ -z "$BEST_ARCH" ]; then
 
         BEST_ARCH="$OPENWRT_ARCH"
 
@@ -188,13 +196,9 @@ EOF
     fi
 
     [ -n "$BEST_ARCH" ] || {
-
-        error_msg "Architecture tidak dapat ditentukan."
-
+        error_msg "Architecture tidak ditemukan."
         return 1
     }
-
-    return 0
 }
 
 
@@ -222,7 +226,7 @@ show_system_info(){
 
 
 # =========================================================
-# INTERNET
+# INTERNET CHECK
 # =========================================================
 
 check_internet(){
@@ -232,11 +236,8 @@ check_internet(){
     ping -c 1 -W 3 1.1.1.1 >/dev/null 2>&1 ||
     ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1 ||
     {
-
         error_msg "Tidak ada koneksi internet."
-
         return 1
-
     }
 
     success "Internet connection available."
@@ -244,15 +245,15 @@ check_internet(){
 
 
 # =========================================================
-# DISK
+# DISK CHECK
 # =========================================================
 
 check_disk(){
 
-    AVAILABLE="$(df /tmp 2>/dev/null | awk 'NR==2 {print $4}')"
+    AVAILABLE="$(df /tmp 2>/dev/null |
+        awk 'NR==2 {print $4}')"
 
-    if [ -z "$AVAILABLE" ]
-    then
+    if [ -z "$AVAILABLE" ]; then
 
         warning "Tidak dapat membaca kapasitas /tmp."
 
@@ -260,13 +261,12 @@ check_disk(){
 
     fi
 
-    if [ "$AVAILABLE" -lt 50000 ]
-    then
+    if [ "$AVAILABLE" -lt 50000 ]; then
 
         error_msg "Ruang /tmp tidak mencukupi."
 
-        echo "  Required : 50000 KB"
-        echo "  Available: ${AVAILABLE} KB"
+        echo "      Required : 50000 KB"
+        echo "      Available: ${AVAILABLE} KB"
 
         return 1
 
@@ -285,8 +285,7 @@ check_existing(){
     PACKAGE_INSTALLED=0
 
     if opkg status luci-app-qtun 2>/dev/null |
-        grep -q 'Status:.*installed'
-    then
+        grep -q 'Status:.*installed'; then
 
         PACKAGE_INSTALLED=1
 
@@ -298,108 +297,7 @@ check_existing(){
 
 
 # =========================================================
-# VALIDATE IPK
-# =========================================================
-
-validate_ipk(){
-
-    [ -f "$PACKAGE_FILE" ] || {
-
-        error_msg "File IPK tidak ditemukan."
-
-        return 1
-    }
-
-    [ -s "$PACKAGE_FILE" ] || {
-
-        error_msg "File IPK kosong."
-
-        return 1
-    }
-
-    info "Checking IPK with opkg..."
-
-    opkg install \
-        --noaction \
-        --force-reinstall \
-        "$PACKAGE_FILE" \
-        >>"$LOG_FILE" 2>&1
-
-    OPKG_STATUS=$?
-
-    if [ "$OPKG_STATUS" -eq 0 ]
-    then
-
-        success "IPK package valid."
-
-        return 0
-
-    fi
-
-    error_msg "IPK tidak dapat divalidasi oleh opkg."
-
-    echo "      Log: $LOG_FILE"
-
-    return 1
-}
-
-
-# =========================================================
-# SMART LOCAL CACHE
-# =========================================================
-
-check_local_cache(){
-
-    LOCAL_PACKAGE="$TMP_DIR/$SELECTED_PACKAGE"
-
-    if [ ! -f "$LOCAL_PACKAGE" ]
-    then
-
-        return 1
-
-    fi
-
-    if [ ! -s "$LOCAL_PACKAGE" ]
-    then
-
-        warning "Local package kosong. Menghapus cache."
-
-        rm -f "$LOCAL_PACKAGE"
-
-        return 1
-
-    fi
-
-    echo
-
-    success "Local package found:"
-
-    echo "      $LOCAL_PACKAGE"
-
-    info "Validating cached package..."
-
-    PACKAGE_FILE="$LOCAL_PACKAGE"
-
-    if validate_ipk
-    then
-
-        success "Using cached IPK."
-        return 0
-
-    fi
-
-    warning "Cached IPK tidak valid."
-
-    rm -f "$LOCAL_PACKAGE"
-
-    PACKAGE_FILE=""
-
-    return 1
-}
-
-
-# =========================================================
-# FIND PACKAGE
+# FIND REMOTE PACKAGE
 # =========================================================
 
 find_package(){
@@ -412,35 +310,12 @@ find_package(){
     UNIVERSAL_PACKAGE="luci-app-qtun_${VERSION}_all.ipk"
     UNIVERSAL_URL="$BASE_URL/$UNIVERSAL_PACKAGE"
 
-
-    # -----------------------------------------------------
-    # SMART CACHE - ARCH SPECIFIC
-    # -----------------------------------------------------
-
-    SELECTED_PACKAGE="$SPECIFIC_PACKAGE"
-    SELECTED_URL="$SPECIFIC_URL"
-
-    info "Checking local QTUN cache..."
-
-    if check_local_cache
-    then
-
-        return 0
-
-    fi
-
-
-    # -----------------------------------------------------
-    # DOWNLOAD ARCH SPECIFIC
-    # -----------------------------------------------------
-
     info "Checking QTUN IPK package..."
 
     if wget --no-check-certificate \
         --spider \
         -q \
-        "$SPECIFIC_URL" 2>/dev/null
-    then
+        "$SPECIFIC_URL" 2>/dev/null; then
 
         SELECTED_PACKAGE="$SPECIFIC_PACKAGE"
         SELECTED_URL="$SPECIFIC_URL"
@@ -454,31 +329,15 @@ find_package(){
     fi
 
 
-    # -----------------------------------------------------
-    # UNIVERSAL PACKAGE
-    # -----------------------------------------------------
-
     warning "Architecture-specific package tidak ditemukan."
-
-    SELECTED_PACKAGE="$UNIVERSAL_PACKAGE"
-    SELECTED_URL="$UNIVERSAL_URL"
-
-
-    info "Checking local universal cache..."
-
-    if check_local_cache
-    then
-
-        return 0
-
-    fi
-
 
     if wget --no-check-certificate \
         --spider \
         -q \
-        "$UNIVERSAL_URL" 2>/dev/null
-    then
+        "$UNIVERSAL_URL" 2>/dev/null; then
+
+        SELECTED_PACKAGE="$UNIVERSAL_PACKAGE"
+        SELECTED_URL="$UNIVERSAL_URL"
 
         success "Universal package found:"
 
@@ -496,7 +355,7 @@ find_package(){
 
 
 # =========================================================
-# UPDATE OPKG
+# UPDATE PACKAGE LIST
 # =========================================================
 
 update_packages(){
@@ -507,8 +366,7 @@ update_packages(){
 
     opkg update >>"$LOG_FILE" 2>&1
 
-    if [ $? -eq 0 ]
-    then
+    if [ $? -eq 0 ]; then
 
         success "Package lists updated."
 
@@ -523,12 +381,192 @@ update_packages(){
 
 
 # =========================================================
-# DOWNLOAD PACKAGE
+# VALIDATE IPK
+# =========================================================
+
+validate_ipk(){
+
+    [ -f "$PACKAGE_FILE" ] || {
+        error_msg "File IPK tidak ditemukan."
+        return 1
+    }
+
+    [ -s "$PACKAGE_FILE" ] || {
+        error_msg "File IPK kosong."
+        return 1
+    }
+
+    opkg install \
+        --noaction \
+        --force-reinstall \
+        "$PACKAGE_FILE" \
+        >>"$LOG_FILE" 2>&1
+
+    OPKG_STATUS=$?
+
+    if [ "$OPKG_STATUS" -eq 0 ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+
+# =========================================================
+# SMART LOCAL CACHE
+# =========================================================
+
+check_local_cache(){
+
+    CACHE_FILE="$TMP_DIR/$SELECTED_PACKAGE"
+
+    info "Checking QTUN local cache..."
+
+    if [ ! -f "$CACHE_FILE" ]; then
+
+        warning "Local package not found."
+
+        return 1
+
+    fi
+
+
+    if [ ! -s "$CACHE_FILE" ]; then
+
+        warning "Local package is empty."
+
+        rm -f "$CACHE_FILE"
+
+        return 1
+
+    fi
+
+
+    PACKAGE_FILE="$CACHE_FILE"
+
+    echo
+
+    info "Validating local package..."
+
+    if validate_ipk; then
+
+        success "Existing package found:"
+        echo "      $SELECTED_PACKAGE"
+
+        success "Local package is valid."
+
+        CACHE_USED=1
+
+        return 0
+
+    fi
+
+
+    warning "Local package is invalid."
+
+    rm -f "$CACHE_FILE"
+
+    return 1
+}
+
+
+# =========================================================
+# DOWNLOAD PACKAGE WITH SPINNER
+# =========================================================
+
+download_once(){
+
+    rm -f "$PACKAGE_FILE"
+
+    wget \
+        --no-check-certificate \
+        -q \
+        -O "$PACKAGE_FILE" \
+        "$SELECTED_URL" \
+        >>"$LOG_FILE" 2>&1 &
+
+    WGET_PID=$!
+
+    INDEX=0
+
+    while kill -0 "$WGET_PID" 2>/dev/null
+    do
+
+        case "$INDEX" in
+
+            0)
+                FRAME="/"
+                ;;
+
+            1)
+                FRAME="-"
+                ;;
+
+            2)
+                FRAME="\\"
+                ;;
+
+            3)
+                FRAME="|"
+                ;;
+
+        esac
+
+        printf "\r      Downloading package... %s" "$FRAME"
+
+        INDEX=$((INDEX + 1))
+
+        [ "$INDEX" -ge 4 ] &&
+            INDEX=0
+
+        sleep 1
+
+    done
+
+
+    wait "$WGET_PID"
+
+    WGET_STATUS=$?
+
+    printf "\r\033[K"
+
+    if [ "$WGET_STATUS" -eq 0 ] &&
+       [ -s "$PACKAGE_FILE" ]; then
+
+        return 0
+
+    fi
+
+    rm -f "$PACKAGE_FILE"
+
+    return 1
+}
+
+
+# =========================================================
+# SMART DOWNLOAD
 # =========================================================
 
 download_package(){
 
     PACKAGE_FILE="$TMP_DIR/$SELECTED_PACKAGE"
+
+    echo
+
+    # -----------------------------------------------------
+    # FIRST: CHECK LOCAL CACHE
+    # -----------------------------------------------------
+
+    if check_local_cache; then
+
+        return 0
+
+    fi
+
+
+    # -----------------------------------------------------
+    # NO VALID CACHE -> DOWNLOAD
+    # -----------------------------------------------------
 
     echo
 
@@ -538,27 +576,13 @@ download_package(){
 
     echo
 
-    rm -f "$PACKAGE_FILE"
 
-    RETRY=1
-    MAX_RETRY=3
+    ATTEMPT=1
 
-    while [ "$RETRY" -le "$MAX_RETRY" ]
+    while [ "$ATTEMPT" -le 3 ]
     do
 
-        info "Download attempt $RETRY/$MAX_RETRY..."
-
-        wget --no-check-certificate \
-            -q \
-            -O "$PACKAGE_FILE" \
-            "$SELECTED_URL" \
-            >>"$LOG_FILE" 2>&1
-
-        WGET_STATUS=$?
-
-        if [ "$WGET_STATUS" -eq 0 ] &&
-           [ -s "$PACKAGE_FILE" ]
-        then
+        if download_once; then
 
             success "Download completed."
 
@@ -566,18 +590,20 @@ download_package(){
 
         fi
 
-        warning "Download failed."
+        ATTEMPT=$((ATTEMPT + 1))
 
-        rm -f "$PACKAGE_FILE"
+        if [ "$ATTEMPT" -le 3 ]; then
 
-        RETRY=$((RETRY + 1))
+            warning "Download failed. Retrying..."
 
-        [ "$RETRY" -le "$MAX_RETRY" ] &&
-            sleep 2
+            sleep 1
+
+        fi
 
     done
 
-    error_msg "Download QTUN gagal setelah $MAX_RETRY percobaan."
+
+    error_msg "Download QTUN gagal setelah 3 percobaan."
 
     echo "      Log: $LOG_FILE"
 
@@ -596,8 +622,7 @@ backup_config(){
     mkdir -p "$BACKUP_DIR"
 
 
-    if [ -d /etc/qtun ]
-    then
+    if [ -d /etc/qtun ]; then
 
         cp -a /etc/qtun \
             "$BACKUP_DIR/" 2>/dev/null
@@ -607,8 +632,7 @@ backup_config(){
     fi
 
 
-    if [ -f /etc/config/qtun ]
-    then
+    if [ -f /etc/config/qtun ]; then
 
         cp -f /etc/config/qtun \
             "$BACKUP_DIR/" 2>/dev/null
@@ -618,8 +642,7 @@ backup_config(){
     fi
 
 
-    if [ -f /etc/init.d/qtun_autoboot ]
-    then
+    if [ -f /etc/init.d/qtun_autoboot ]; then
 
         cp -f /etc/init.d/qtun_autoboot \
             "$BACKUP_DIR/" 2>/dev/null
@@ -636,17 +659,15 @@ backup_config(){
 
 install_package(){
 
-    info "Installing local IPK package..."
+    info "Installing local QTUN IPK..."
 
-    opkg install "$PACKAGE_FILE" \
+    opkg install \
+        "$PACKAGE_FILE" \
         >>"$LOG_FILE" 2>&1
 
-    if [ $? -ne 0 ]
-    then
+    if [ $? -ne 0 ]; then
 
         error_msg "QTUN IPK installation failed."
-
-        echo "      Log: $LOG_FILE"
 
         return 1
 
@@ -669,8 +690,7 @@ configure_service(){
     info "Configuring QTUN..."
 
 
-    if [ -x /etc/init.d/qtun_autoboot ]
-    then
+    if [ -x /etc/init.d/qtun_autoboot ]; then
 
         /etc/init.d/qtun_autoboot enable \
             >/dev/null 2>&1
@@ -690,8 +710,7 @@ configure_service(){
     fi
 
 
-    if [ -x /etc/init.d/rpcd ]
-    then
+    if [ -x /etc/init.d/rpcd ]; then
 
         /etc/init.d/rpcd restart \
             >/dev/null 2>&1
@@ -738,27 +757,29 @@ install_qtun(){
 
     echo
 
-    info "[3/6] Preparing QTUN package..."
+    info "[3/6] Checking QTUN package..."
 
-    if [ ! -f "$PACKAGE_FILE" ]
-    then
-
-        download_package ||
-            return 1
-
-    else
-
-        success "Using existing local package."
-
-    fi
+    download_package ||
+        return 1
 
 
     echo
 
     info "[4/6] Checking package integrity..."
 
-    validate_ipk ||
+    if validate_ipk; then
+
+        success "IPK package valid."
+
+    else
+
+        error_msg "IPK tidak dapat divalidasi."
+
+        echo "      Log: $LOG_FILE"
+
         return 1
+
+    fi
 
 
     echo
@@ -779,6 +800,13 @@ install_qtun(){
     echo
 
     success "QTUN installation completed!"
+
+    # -----------------------------------------------------
+    # IMPORTANT:
+    # DO NOT DELETE PACKAGE.
+    #
+    # Package is intentionally kept in /tmp as local cache.
+    # -----------------------------------------------------
 
     return 0
 }
@@ -825,8 +853,7 @@ uninstall_qtun(){
             info "Stopping QTUN..."
 
 
-            if [ -x /etc/init.d/qtun_autoboot ]
-            then
+            if [ -x /etc/init.d/qtun_autoboot ]; then
 
                 /etc/init.d/qtun_autoboot stop \
                     >/dev/null 2>&1
@@ -859,12 +886,10 @@ uninstall_qtun(){
             rm -f /etc/init.d/qtun_autoboot
 
             rm -rf /tmp/luci-indexcache
-
             rm -rf /tmp/luci-modulecache
 
 
-            if [ -x /etc/init.d/rpcd ]
-            then
+            if [ -x /etc/init.d/rpcd ]; then
 
                 /etc/init.d/rpcd restart \
                     >/dev/null 2>&1
@@ -917,8 +942,7 @@ installation_menu(){
     echo
 
 
-    if [ "$PACKAGE_INSTALLED" -eq 1 ]
-    then
+    if [ "$PACKAGE_INSTALLED" -eq 1 ]; then
 
         printf "${YELLOW}${BOLD}"
 
@@ -1019,6 +1043,18 @@ final_summary(){
     success "Package mgr   : $PACKAGE_MANAGER"
     success "Package        : $SELECTED_PACKAGE"
 
+
+    if [ "$CACHE_USED" -eq 1 ]; then
+
+        success "Package source: Local Cache"
+
+    else
+
+        success "Package source: Download"
+
+    fi
+
+
     echo
 
     printf "${CYAN}${BOLD}"
@@ -1089,8 +1125,7 @@ main(){
     backup_config
 
 
-    if install_qtun
-    then
+    if install_qtun; then
 
         final_summary
 
@@ -1124,8 +1159,7 @@ main(){
 # ROOT CHECK
 # =========================================================
 
-if [ "$(id -u)" != "0" ]
-then
+if [ "$(id -u)" != "0" ]; then
 
     echo
 
@@ -1135,5 +1169,9 @@ then
 
 fi
 
+
+# =========================================================
+# START
+# =========================================================
 
 main
